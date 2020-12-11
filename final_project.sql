@@ -1,11 +1,11 @@
 -- Indexes created to ease the speed of Select  for commonly searched categories
-CREATE INDEX customer_last_name ON customers(last_name);
-CREATE INDEX employee_last_name ON employees(last_name);
-CREATE INDEX vehicle_make_index ON vehicletypes (make);
-CREATE INDEX vehicle_body_type_index ON vehicletypes(body_type);
-CREATE INDEX vehicle_model_index ON vehicletypes(model);
-CREATE INDEX dealership_name ON dealerships(business_name);
-CREATE INDEX vehicles_type_id ON vehicles(vehicle_type_id);
+CREATE OR REPLACE INDEX customer_last_name ON customers(last_name);
+CREATE OR REPLACE INDEX employee_last_name ON employees(last_name);
+CREATE OR REPLACE INDEX vehicle_make_index ON vehicletypes (make);
+CREATE OR REPLACE INDEX vehicle_body_type_index ON vehicletypes(body_type);
+CREATE OR REPLACE INDEX vehicle_model_index ON vehicletypes(model);
+CREATE OR REPLACE INDEX dealership_name ON dealerships(business_name);
+CREATE OR REPLACE INDEX vehicles_type_id ON vehicles(vehicle_type_id);
 
 
 --quick view of employees and their associated dealerships
@@ -104,12 +104,13 @@ REFERENCES sales (sale_id));
 -- DROP TABLE payments;
 
 -- View created to track as a customer pays off thier car
-CREATE VIEW payments_and_balance AS
+CREATE OR REPLACE VIEW payments_and_balance AS
 	SELECT 
 		s.sale_id,
 		s.price AS price,
+		s.deposit AS deposit_amount,
 		SUM(p.payment_amount) AS payment_total,
-		s.price - SUM(p.payment_amount) AS balance
+		s.price - s.deposit - SUM(p.payment_amount) AS balance
 	FROM payments p
 	JOIN sales s ON s.sale_id = p.sale_id
 	GROUP BY s.sale_id
@@ -125,8 +126,10 @@ AS $$
 DECLARE customer_id INT;
 BEGIN
 customer_id = (SELECT s.customer_id FROM sales s
+	WHERE s.sale_id = p_sale_id),
+deposit_amount = (SELECT s.deposit FROM sales s
 	WHERE s.sale_id = p_sale_id);
-INSERT INTO payments(payment_amount, customer_id, sale_id, payment_date)
+INSERT INTO payments(payment_amount, customer_id, deposit_amount, sale_id, payment_date)
 VALUES (p_payment_amount, customer_id, p_sale_id, current_date);
 END
 $$;
